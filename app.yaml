@@ -1,0 +1,59 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bggapp-config
+data:
+  BGG_DB_USER: root
+  BGG_DB_HOST: bggdb-svc
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bggapp-secret
+type: Opaque
+data:
+  BGG_DB_PASSWORD: Y2hhbmdlaXQ=
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bggapp-deploy
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      name: bggapp-deploy
+  template:
+    metadata:
+      labels:
+        name: bggapp-deploy
+    spec:
+      containers:
+      - name: bggapp-container
+        image: stackupiss/bgg-backend:v1
+        envFrom:
+          - secretRef:
+              name: bggapp-secret
+          - configMapRef:
+              name: bggapp-config
+        ports:
+        - containerPort: 3000
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 3000
+            scheme: HTTP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bggapp-svc
+spec:
+  type: LoadBalancer
+  selector:
+    name: bggapp-deploy
+  ports:
+  - port: 80
+    targetPort: 3000
